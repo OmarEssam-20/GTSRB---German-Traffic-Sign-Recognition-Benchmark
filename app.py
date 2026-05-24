@@ -2,6 +2,7 @@ import streamlit as st
 import tensorflow as tf
 import numpy as np
 from PIL import Image
+from pathlib import Path
 from tensorflow.keras.applications.efficientnet import preprocess_input
 
 st.set_page_config(
@@ -9,6 +10,8 @@ st.set_page_config(
     page_icon="🚦",
     layout="centered"
 )
+
+MODEL_PATH = Path(__file__).parent / "finetuned_model_best.keras"
 
 SIGN_NAMES = {
     0: "Speed limit (20km/h)",
@@ -56,9 +59,17 @@ SIGN_NAMES = {
     42: "End of no passing by vehicles over 3.5 tons"
 }
 
+CLASS_NAMES = [
+    "0", "1", "10", "11", "12", "13", "14", "15", "16", "17",
+    "18", "19", "2", "20", "21", "22", "23", "24", "25", "26",
+    "27", "28", "29", "3", "30", "31", "32", "33", "34", "35",
+    "36", "37", "38", "39", "4", "40", "41", "42", "5", "6",
+    "7", "8", "9"
+]
+
 @st.cache_resource
 def load_model():
-    return tf.keras.models.load_model("finetuned_model_best.keras")
+    return tf.keras.models.load_model(MODEL_PATH)
 
 model = load_model()
 
@@ -88,7 +99,8 @@ if uploaded_file is not None:
     with st.spinner("Classifying..."):
         prediction = model.predict(img_array, verbose=0)[0]
 
-    predicted_class = int(np.argmax(prediction))
+    predicted_index = int(np.argmax(prediction))
+    predicted_class = int(CLASS_NAMES[predicted_index])
     confidence = float(np.max(prediction)) * 100
     top_3 = np.argsort(prediction)[::-1][:3]
 
@@ -100,9 +112,10 @@ if uploaded_file is not None:
         st.divider()
         st.subheader("Top 3 Predictions")
 
-        for i, class_id in enumerate(top_3, start=1):
-            prob = float(prediction[class_id]) * 100
-            st.write(f"{i}. {SIGN_NAMES[int(class_id)]} — {prob:.2f}%")
+        for i, index in enumerate(top_3, start=1):
+            class_id = int(CLASS_NAMES[int(index)])
+            prob = float(prediction[index]) * 100
+            st.write(f"{i}. {SIGN_NAMES[class_id]} — {prob:.2f}%")
             st.progress(min(int(prob), 100))
 
 else:
